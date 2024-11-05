@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from gamble.gamble import Gamble
 
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+# asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 intents = discord.Intents.default()
 intents.message_content = True
