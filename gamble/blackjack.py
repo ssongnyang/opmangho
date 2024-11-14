@@ -80,18 +80,18 @@ class BlackJackGame:
         self.money: int = money
         self.cards: list[int] = list(range(52))
         self.player: list[int] = [self.cards.pop(random.randint(0, 51)), self.cards.pop(random.randint(0, 50))]
-        # self.player = [0, 0]
+        # self.player = [4, 4]
         self.player_splited: list[int] = []
         self.splited: bool = False
         self.dealer: list[int] = [self.cards.pop(random.randint(0, 49)), self.cards.pop(random.randint(0, 48))]
-        self.player_result: str = ""  # bust, stay, 블랙잭
+        self.player_result: str = ""  # 버스트, 스테이, 블랙잭
         self.player_result_splited: str = ""
         self.embed = discord.Embed(title=":black_joker:블랙잭 게임:black_joker:", color=Color.gametable)
         self.view = ui.View()
         self.btn_hit = ui.Button(style=discord.ButtonStyle.blurple, label="히트")
         self.btn_stay = ui.Button(style=discord.ButtonStyle.blurple, label="스테이")
-        self.btn_hit2 = ui.Button(style=discord.ButtonStyle.blurple, label="히트(2)")
-        self.btn_stay2 = ui.Button(style=discord.ButtonStyle.blurple, label="스테이(2)")
+        self.btn_hit_split = ui.Button(style=discord.ButtonStyle.blurple, label="히트(2)")
+        self.btn_stay_split = ui.Button(style=discord.ButtonStyle.blurple, label="스테이(2)")
         self.btn_split = ui.Button(style=discord.ButtonStyle.green, label="스플릿", row=1)
         self.btn_doubledown = ui.Button(style=discord.ButtonStyle.danger, label="더블다운", row=1)
         if account.get_money(itc) < money * 2:
@@ -100,9 +100,9 @@ class BlackJackGame:
         if self.player[0] % 13 != self.player[1] % 13:
             self.btn_split.disabled = True
         self.btn_hit.callback = self.hit
-        self.btn_hit2.callback = self.hit_split
+        self.btn_hit_split.callback = self.hit_split
         self.btn_stay.callback = self.stay
-        self.btn_stay2.callback = self.stay_split
+        self.btn_stay_split.callback = self.stay_split
         self.btn_split.callback = self.split
         self.btn_doubledown.callback = self.doubledown
         self.view.add_item(self.btn_hit)
@@ -134,17 +134,25 @@ class BlackJackGame:
                 value="? + " + ",".join([cardToEmoji(c) for c in self.dealer[1:]]),
                 inline=False,
             )
-        self.embed.set_field_at(
-            1,
-            name=f"{self.player_name}님의 카드 : ",
-            value=", ".join([cardToEmoji(c) for c in self.player]),
-            inline=False,
-        )
+        if self.splited:
+            self.embed.set_field_at(
+                1,
+                name=f"{self.player_name}님의 카드 : ",
+                value="**[1] **" + ", ".join([cardToEmoji(c) for c in self.player]),
+                inline=False,
+            )
+        else:
+            self.embed.set_field_at(
+                1,
+                name=f"{self.player_name}님의 카드 : ",
+                value=", ".join([cardToEmoji(c) for c in self.player]),
+                inline=False,
+            )
         if self.splited:
             self.embed.set_field_at(
                 2,
                 name="ㅤ ",
-                value=" , ".join([cardToEmoji(c) for c in self.player_splited]) + "\nㅤ ",
+                value="**[2]** " + " , ".join([cardToEmoji(c) for c in self.player_splited]) + "\nㅤ ",
                 inline=False,
             )
         if __itc:
@@ -183,7 +191,7 @@ class BlackJackGame:
         game_result_main: int = 0
         game_result_split: int = 0
         if self.player_result == "버스트" or self.player_result == "버스트(더블다운)":
-            game_result_main = 1
+            game_result_main = -1
         else:
             dealer_result = await self.dealer_turn()
             if dealer_result == "블랙잭" and self.player_result == "블랙잭":
@@ -200,9 +208,10 @@ class BlackJackGame:
                 game_result_main = -1
             else:
                 game_result_main = 1
+
         if self.splited:
             if self.player_result_splited == "버스트":
-                game_result_split = 1
+                game_result_split = -1
             else:
                 if dealer_result == "블랙잭" and self.player_result_splited == "블랙잭":
                     pass  # draw
@@ -308,6 +317,7 @@ class BlackJackGame:
             self.player_result = "버스트"
             self.btn_hit.disabled = True
             self.btn_stay.disabled = True
+            await self.update_embed()
             if self.player_result_splited == "" and self.player_splited != []:
                 return
             return await self.finish(_itc)
@@ -321,8 +331,9 @@ class BlackJackGame:
         await _itc.response.defer()
         if min(sum_card(self.player_splited)) >= 22:
             self.player_result_splited = "버스트"
-            self.btn_hit2.disabled = True
-            self.btn_stay2.disabled = True
+            self.btn_hit_split.disabled = True
+            self.btn_stay_split.disabled = True
+            await self.update_embed()
             if self.player_result == "" and self.player != []:
                 return
             return await self.finish(_itc)
@@ -334,6 +345,7 @@ class BlackJackGame:
             return await _itc.response.send_message("게임 중인 사람만 조작할 수 있습니다.", ephemeral=True)
         self.btn_hit.disabled = True
         self.btn_stay.disabled = True
+        await self.update_embed()
         await _itc.response.defer()
         if sorted(sum_card(self.player)) == [11, 21] and not self.splited:
             self.player_result = "블랙잭"
@@ -347,8 +359,9 @@ class BlackJackGame:
     async def stay_split(self, _itc: discord.Interaction):
         if _itc.user.id != self.playerID:
             return await _itc.response.send_message("게임 중인 사람만 조작할 수 있습니다.", ephemeral=True)
-        self.btn_hit2.disabled = True
-        self.btn_stay2.disabled = True
+        self.btn_hit_split.disabled = True
+        self.btn_stay_split.disabled = True
+        await self.update_embed()
         await _itc.response.defer()
         if sorted(sum_card(self.player_splited)) == [11, 21] and not self.splited:
             self.player_result_splited = "블랙잭"
@@ -368,8 +381,8 @@ class BlackJackGame:
         self.btn_split.label = "🔥스플릿🔥"
         self.btn_hit.label = "히트(1)"
         self.btn_stay.label = "스테이(1)"
-        self.view.add_item(self.btn_hit2)
-        self.view.add_item(self.btn_stay2)
+        self.view.add_item(self.btn_hit_split)
+        self.view.add_item(self.btn_stay_split)
         self.splited = True
 
         self.player_splited.append(self.player.pop())

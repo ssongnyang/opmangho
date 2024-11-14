@@ -9,8 +9,9 @@ from gamble.simple_gamble import SimpleGamble
 from gamble.dice_roll import DiceRoll
 from gamble.blackjack import BlackJack
 
+from stock.stock import Stock, change_price
+
 from account.account import Account
-from database.account import clear_donjo
 
 # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -29,8 +30,10 @@ async def on_ready():
     await bot.add_cog(SimpleGamble(bot))
     await bot.add_cog(DiceRoll(bot))
     await bot.add_cog(BlackJack(bot))
+    await bot.add_cog(Stock(bot))
     synced = await bot.tree.sync()
     print("Loaded Slash Command: ", len(synced))
+    await change_price()
 
 
 load_dotenv()

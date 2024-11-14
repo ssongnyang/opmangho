@@ -6,3 +6,4 @@ class Color:
     fail: int = 0xE92E2E
     normal: int = 0xC98DDF
     gametable: int = 0x872221
+    stock: int = 0xC6E978
